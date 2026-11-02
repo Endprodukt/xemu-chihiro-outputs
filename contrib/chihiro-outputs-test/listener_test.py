@@ -31,7 +31,7 @@ if P2:
               ("chihiro.jvs_p2", "gs_change", "19")]
 if profile == "gs":
     # the action button (o) and the mode change (p) on keys, to skip the intro
-    extra = [("chihiro.jvs.gs", "body_button", "18"), ("chihiro.jvs.gs", "change", "19")]
+    extra += [("chihiro.jvs.gs", "body_button", "18"), ("chihiro.jvs.gs", "change", "19")]
 x = Xemu(images[profile], profile, "listen-p2" if P2 else "listen", network=True, extra_toml=extra)
 listener_log = open(os.path.join(x.log_dir, "listener.log"), "w")
 listener = subprocess.Popen([sys.executable, "-I",
@@ -76,8 +76,9 @@ try:
     time.sleep(boot_wait)
     x.focus()
     x.screenshot("01_attract")
+    # Ghost Squad wants the Start button held (a 0.3 s tap is not seen)
     for _ in range(3):
-        x.tap(START, 0.3)
+        x.tap(START, 1.0 if profile == "gs" else 0.3)
         time.sleep(1)
     note("Start pressed (player %d)" % (2 if P2 else 1))
     if profile == "vc3":
@@ -94,9 +95,37 @@ try:
         x.tap(START, 0.15)                       # skip the intro
         note("intro skipped")
         time.sleep(10)
+    elif P2:
+        # Ghost Squad, player 2: Start is only taken on some attract screens,
+        # so press until the status byte says in play; then the card screen
+        # ("Start game without card" at about 72 % / 67 %), the tutorial, the
+        # mission select.
+        for i in range(50):
+            v = x.read(0x00465A28 + 0x1AC, 1)
+            if v == b"":
+                break
+            x.tap(START, 1.0)
+            time.sleep(2)
+        note("P2 status now %s after %d presses" % ((x.read(0x00465A28 + 0x1AC, 1) or b"").hex(), i))
+        x.screenshot("01b_p2_accepted")
+        time.sleep(2)
+        x.focus(aim=(0.72, 0.67))
+        pull()                                   # start game without card
+        time.sleep(4)
+        x.tap(START, 1.0)                        # skip the tutorial
+        time.sleep(5)
+        x.focus()
+        pull()                                   # mission select
+        note("mission chosen; skipping the intro with the action button")
+        for i in range(6):
+            time.sleep(4)
+            x.tap("o", 0.15)
+            time.sleep(0.5)
+            x.tap("p", 0.15)
+        time.sleep(6)
     else:
         time.sleep(3)
-        x.tap(START, 0.15)                       # skip the tutorial
+        x.tap(START, 1.0)                        # skip the tutorial
         time.sleep(5)
         x.focus()
         pull()                                   # mission select
