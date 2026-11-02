@@ -113,6 +113,19 @@ typedef enum {
     MEM_GS,         /* Ghost Squad: life and ammo behind pointers */
 } MemKind;
 
+/* Where a build of the game keeps what we read; told apart by a few bytes
+ * of its code, as DemulShooter tells its targets apart. */
+typedef struct {
+    const char *name;
+    uint32_t    check_va;
+    uint8_t     check[4];
+    int         check_len;
+    uint32_t    status[2];
+    uint32_t    life[2];        /* MEM_GS: the pointer to the player's record */
+    uint32_t    ammo[2];        /* MEM_GS: the one pointer, both players */
+    uint32_t    credits;
+} OutputRevision;
+
 typedef struct {
     const char *xbe;            /* chihiro_game_filename, without its directory */
     const char *rom;            /* the ROM name: the listener's ini file */
@@ -125,14 +138,33 @@ typedef struct {
     bool        recoil_from_jvs;
     MemKind     kind;
     uint8_t     ingame;         /* the status byte's value while in play */
-    uint32_t    status[2];
-    uint32_t    life[2];        /* MEM_GS: the pointer to the player's record */
-    uint32_t    ammo[2];        /* MEM_GS: the one pointer, both players */
-    uint32_t    credits;
+    const OutputRevision *revs;
+    int         nrevs;
 } OutputGame;
 
 /* Virtua Cop 3 (vc3.xbe). The status byte: 0 inactive, 2 in play,
- * 8 continue screen, 16 game over, 128 attract demo. */
+ * 8 continue screen, 16 game over, 128 attract demo. The player's record
+ * holds the life at +0xC and the score at +0x18; player 2's is 0xAC behind,
+ * their magazine 0xD8 behind.
+ * Two builds: the GD-ROM MAME calls vcop3 (XBE of 2003-05-21, 0x5B5080
+ * bytes), measured here (the magazine 9, 8, 7, 0, the status 0, 2, 8 in
+ * attract, play, continue); and the one DemulShooter's Cxbx target knows
+ * (0x51BA00 bytes), its addresses. The credits of the first are the
+ * second's moved by the same 0x76B00 as the status, not yet seen counting. */
+static const OutputRevision vcop3_revs[] = {
+    { "2003-05 GD-ROM", 0x0007A3D6, { 0xF0, 0x68, 0x30, 0x9F }, 4,
+      .status  = { 0x003F3F68, 0x003F3F68 + 0xAC },
+      .life    = { 0x003F3F74, 0x003F3F74 + 0xAC },
+      .ammo    = { 0x003DE432, 0x003DE432 + 0xD8 },
+      .credits = 0x0055FB18 },
+    { "Cxbx dump", 0x0007A3D6, { 0x8B, 0xE8 }, 2,
+      .status  = { 0x0037D468, 0x0037D468 + 0xAC },
+      .life    = { 0x0037D474, 0x0037D474 + 0xAC },
+      .ammo    = { 0x00367942, 0x00367942 + 0xD8 },
+      .credits = 0x004E9018 },
+};
+/* Bit 6 and bit 3 are DemulShooter's "foot lamps"; seen here, they come on
+ * when the player is hit. */
 static const OutputGame game_vcop3 = {
     .xbe = "vc3.xbe", .rom = "vcop3",
     .published = OBIT_PAIR(OUT_P1_LMP_START) |
@@ -140,29 +172,37 @@ static const OutputGame game_vcop3 = {
     .gpo_bit = { [OUT_P1_LMP_START] = 0x80, [OUT_P2_LMP_START] = 0x10,
                  [OUT_P1_LMP_FOOT]  = 0x40, [OUT_P2_LMP_FOOT]  = 0x08 },
     .kind = MEM_BYTES, .ingame = 2,
-    .status  = { 0x0037D468, 0x0037D468 + 0xAC },
-    .life    = { 0x0037D474, 0x0037D474 + 0xAC },
-    .ammo    = { 0x00367942, 0x00367942 + 0xD8 },
-    .credits = 0x004E9018,
+    .revs = vcop3_revs, .nrevs = ARRAY_SIZE(vcop3_revs),
 };
 
 /* The House of the Dead III (hod3xb.xbe). The status byte: 5 in play,
  * 4 continue screen, 66 game over, 9 attract demo. */
+static const OutputRevision hod3_revs[] = {
+    { "GD-ROM", 0x00011B62, { 0x66, 0x89, 0x4E, 0x12 }, 4,
+      .status  = { 0x00276708, 0x00276934 },
+      .life    = { 0x00276714, 0x00276940 },
+      .ammo    = { 0x00276760, 0x0027698C },
+      .credits = 0x004CBA38 },
+};
 static const OutputGame game_hod3 = {
     .xbe = "hod3xb.xbe", .rom = "hod3",
     .published = OBIT_PAIR(OUT_P1_LMP_START) | OBIT_MEMORY,
     .gpo_bit = { [OUT_P1_LMP_START] = 0x80, [OUT_P2_LMP_START] = 0x10 },
     .kind = MEM_BYTES, .ingame = 5,
-    .status  = { 0x00276708, 0x00276934 },
-    .life    = { 0x00276714, 0x00276940 },
-    .ammo    = { 0x00276760, 0x0027698C },
-    .credits = 0x004CBA38,
+    .revs = hod3_revs, .nrevs = ARRAY_SIZE(hod3_revs),
 };
 
 /* Ghost Squad (vsg.xbe). The cabinet has the recoil: its JVS output is the
  * kick, taken as it is and as the pulse. The status byte is 2 in play. The
  * card locks are the cabinet table's (chihiro.c), the holder lamps are
  * DemulShooter's reading of the same byte. */
+static const OutputRevision gsquad_revs[] = {
+    { "GD-ROM", 0x000852BE, { 0x8D, 0x54, 0x24, 0x0F }, 4,
+      .status  = { 0x00465A28, 0x00465A28 + 0x1AC },
+      .life    = { 0x00465B14, 0x00465B14 + 0x1AC },
+      .ammo    = { 0x00451828, 0x00451828 },
+      .credits = 0x004B9EA0 },
+};
 static const OutputGame game_gsquad = {
     .xbe = "vsg.xbe", .rom = "gsquad",
     .published = OBIT_PAIR(OUT_P1_LMP_START) | OBIT(OUT_LMP_BILLBOARD) |
@@ -176,10 +216,7 @@ static const OutputGame game_gsquad = {
                  [OUT_P1_CARD_LOCK]  = 0x20, [OUT_P2_CARD_LOCK]  = 0x01 },
     .recoil_from_jvs = true,
     .kind = MEM_GS, .ingame = 2,
-    .status  = { 0x00465A28, 0x00465A28 + 0x1AC },
-    .life    = { 0x00465B14, 0x00465B14 + 0x1AC },
-    .ammo    = { 0x00451828, 0x00451828 },
-    .credits = 0x004B9EA0,
+    .revs = gsquad_revs, .nrevs = ARRAY_SIZE(gsquad_revs),
 };
 
 static const OutputGame *const games[] = {
@@ -199,6 +236,8 @@ enum { PULSE_P1_RECOIL, PULSE_P2_RECOIL, PULSE_P1_DAMAGED, PULSE_P2_DAMAGED,
 
 static struct {
     const OutputGame *game;     /* NULL between sessions */
+    const OutputRevision *rev;  /* the build found in memory, NULL until then */
+    bool     rev_missing_said;
     int32_t  value[OUT_COUNT];
     int32_t  sent[OUT_COUNT];
     int32_t  last_ammo[2];
@@ -738,6 +777,8 @@ static void session_start(const OutputGame *g)
     memset(st.last_life, 0, sizeof(st.last_life));
     st.gpo = 0;
     st.gpo_seen = false;
+    st.rev = NULL;
+    st.rev_missing_said = false;
     for (int i = 0; i < PULSE_COUNT; i++) {
         pulse_reset(&st.pulse[i]);
     }
@@ -823,20 +864,21 @@ static bool rd_chain(uint32_t base, const uint32_t *offs, int n, uint32_t *out)
 static void poll_player(int p)
 {
     const OutputGame *g = st.game;
+    const OutputRevision *r = st.rev;
     uint8_t status = 0;
     int32_t life = 0, ammo = 0, clip = 0;
 
-    if (rd8(g->status[p], &status) && status == g->ingame) {
+    if (rd8(r->status[p], &status) && status == g->ingame) {
         if (g->kind == MEM_GS) {
             uint32_t v;
             static const uint32_t life_offs[] = { 0xB8 };
             uint32_t ammo_offs[] = { 0x38 + (p ? 0x650 : 0), 0x0C };
-            life = rd_chain(g->life[p], life_offs, 1, &v) ? (int32_t)v : 0;
-            ammo = rd_chain(g->ammo[p], ammo_offs, 2, &v) ? (int32_t)v : 0;
+            life = rd_chain(r->life[p], life_offs, 1, &v) ? (int32_t)v : 0;
+            ammo = rd_chain(r->ammo[p], ammo_offs, 2, &v) ? (int32_t)v : 0;
         } else {
             uint8_t b;
-            life = rd8(g->life[p], &b) ? b : 0;
-            ammo = rd8(g->ammo[p], &b) ? b : 0;
+            life = rd8(r->life[p], &b) ? b : 0;
+            ammo = rd8(r->ammo[p], &b) ? b : 0;
         }
         /* A shot: one round fewer. A reload adds, an empty magazine stays,
          * neither is a kick. */
@@ -858,13 +900,48 @@ static void poll_player(int p)
     st.value[OUT_P1_LIFE + p] = life;
 }
 
+/* Which build runs: the first revision whose check bytes are in memory.
+ * The game's pages may not be mapped yet when the session starts, so this
+ * is asked again every tick until one answers. */
+static bool find_revision(void)
+{
+    const OutputGame *g = st.game;
+    uint8_t have[4] = { 0 };
+    bool any_read = false;
+
+    for (int i = 0; i < g->nrevs; i++) {
+        const OutputRevision *r = &g->revs[i];
+        if (!chihiro_guest_read(r->check_va, have, r->check_len)) {
+            continue;
+        }
+        any_read = true;
+        if (memcmp(have, r->check, r->check_len) == 0) {
+            st.rev = r;
+            fprintf(stderr, "Chihiro outputs: %s is the %s build\n",
+                    g->xbe, r->name);
+            return true;
+        }
+    }
+    if (any_read && !st.rev_missing_said) {
+        st.rev_missing_said = true;
+        fprintf(stderr, "Chihiro outputs: %s is a build without known "
+                "addresses (%02X %02X %02X %02X at %08X): lamps only\n",
+                g->xbe, have[0], have[1], have[2], have[3],
+                g->revs[0].check_va);
+    }
+    return false;
+}
+
 static void poll_memory(void)
 {
     uint8_t credits;
 
+    if (!st.rev && !find_revision()) {
+        return;
+    }
     poll_player(0);
     poll_player(1);
-    st.value[OUT_CREDITS] = rd8(st.game->credits, &credits) ? credits : 0;
+    st.value[OUT_CREDITS] = rd8(st.rev->credits, &credits) ? credits : 0;
 }
 
 /* ------------------------------------------------------------------------
