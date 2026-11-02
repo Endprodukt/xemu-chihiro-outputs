@@ -117,8 +117,21 @@ class Xemu:
     def dump(self, name):
         path = os.path.join(self.log_dir, name + ".bin").replace("\\", "/")
         t0 = time.time()
+        # drain whatever the monitor still has to say, then ask
+        try:
+            self.mon.settimeout(0.3)
+            while self.mon.recv(65536):
+                pass
+        except OSError:
+            pass
+        self.mon.settimeout(2)
         out = self.cmd("pmemsave 0 %d %s" % (RAM, path), wait=60)
-        time.sleep(0.2)
+        t1 = time.time()
+        while time.time() - t1 < 30:
+            if os.path.exists(path) and os.path.getsize(path) == RAM:
+                break
+            time.sleep(0.2)
+        time.sleep(0.3)
         ok = os.path.exists(path) and os.path.getsize(path) == RAM
         self.say("dump %-10s %s (%.1fs)%s" % (name, "ok" if ok else "FAILED",
                                               time.time() - t0,
@@ -127,7 +140,7 @@ class Xemu:
 
     # ---- keys
     SC = {"1": 0x02, "2": 0x03, "5": 0x06, "space": 0x39, "r": 0x13,
-          "alt": 0x38, "o": 0x18, "p": 0x19, "esc": 0x01}
+          "alt": 0x38, "o": 0x18, "p": 0x19, "esc": 0x01, "x": 0x2D, "c": 0x2E}
 
     def key(self, name, down):
         class KEYBDINPUT(ctypes.Structure):

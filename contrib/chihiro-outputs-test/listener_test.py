@@ -17,11 +17,22 @@ images = {
     "hotd3": r"D:\Xemu Chihiro\The House of the Dead 3.bin",
     "gs": r"D:\Xemu Chihiro\Ghost Squad.bin",
 }
+P2 = "--p2" in sys.argv
+CLICK = "--click" in sys.argv          # trigger on the left mouse button (binding 1001)
+# player 2 on keys: Start 2, trigger X, reload C, action O / mode P, aim from the mouse too
+START, TRIG, RELOAD = ("2", "x", "c") if P2 else ("1", "space", "r")
 extra = []
+if P2:
+    extra += [("chihiro.jvs_p2", "pointer_device", "'mouse'"),
+              ("chihiro.jvs_p2", "start", "31"),
+              ("chihiro.jvs_p2", profile + "_trigger", "1001" if CLICK else "27"),
+              ("chihiro.jvs_p2", profile + "_reload", "6"),
+              ("chihiro.jvs_p2", "gs_body_button", "18"),
+              ("chihiro.jvs_p2", "gs_change", "19")]
 if profile == "gs":
     # the action button (o) and the mode change (p) on keys, to skip the intro
     extra = [("chihiro.jvs.gs", "body_button", "18"), ("chihiro.jvs.gs", "change", "19")]
-x = Xemu(images[profile], profile, "listen", network=True, extra_toml=extra)
+x = Xemu(images[profile], profile, "listen-p2" if P2 else "listen", network=True, extra_toml=extra)
 listener_log = open(os.path.join(x.log_dir, "listener.log"), "w")
 listener = subprocess.Popen([sys.executable, "-I",
                              os.path.join(HERE, "outputs_listener.py"),
@@ -35,20 +46,29 @@ def note(msg):
     listener_log.flush()
 
 
+def pull(hold=0.1):
+    if CLICK:
+        x.click(True)
+        time.sleep(hold)
+        x.click(False)
+    else:
+        x.tap(TRIG, hold)
+
+
 def shots(n, gap=0.45):
     for _ in range(n):
-        x.tap("space", 0.1)
+        pull()
         time.sleep(gap)
 
 
 def reload():
-    x.key("r", True)
+    x.key(RELOAD, True)
     time.sleep(0.3)
-    x.tap("space")
+    pull()
     time.sleep(0.5)
-    x.tap("space")
+    pull()
     time.sleep(0.2)
-    x.key("r", False)
+    x.key(RELOAD, False)
 
 
 try:
@@ -56,30 +76,30 @@ try:
     time.sleep(boot_wait)
     x.focus()
     x.screenshot("01_attract")
-    x.tap("1", 0.15)
-    time.sleep(1)
-    x.tap("1", 0.15)
-    note("Start pressed")
+    for _ in range(3):
+        x.tap(START, 0.3)
+        time.sleep(1)
+    note("Start pressed (player %d)" % (2 if P2 else 1))
     if profile == "vc3":
         time.sleep(4)
         x.focus()
-        x.tap("space", 0.1)                      # mission select
+        pull()                                   # mission select
         note("mission chosen, skipping the briefing")
         for i in range(10):
             time.sleep(4)
-            x.tap("1", 0.15)
+            x.tap(START, 0.15)
         time.sleep(3)
     elif profile == "hotd3":
         time.sleep(3)
-        x.tap("1", 0.15)                         # skip the intro
+        x.tap(START, 0.15)                       # skip the intro
         note("intro skipped")
         time.sleep(10)
     else:
         time.sleep(3)
-        x.tap("1", 0.15)                         # skip the tutorial
+        x.tap(START, 0.15)                       # skip the tutorial
         time.sleep(5)
         x.focus()
-        x.tap("space", 0.1)                      # mission select
+        pull()                                   # mission select
         note("mission chosen; skipping the intro with the action button")
         for i in range(6):
             time.sleep(4)

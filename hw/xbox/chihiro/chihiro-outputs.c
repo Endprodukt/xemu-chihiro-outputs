@@ -25,7 +25,9 @@
  * shot that is fired, in play only (not in the attract demo, which shoots
  * too), and never when it is empty. The same memory says whether the player
  * is in play, how much life and ammunition they have and how many credits
- * are in. The addresses are DemulShooter's for its Cxbx-Reloaded targets,
+ * are in. The attract demo plays too, with the magazine counting, under
+ * another status (VC3 128, HOTD3 9, Ghost Squad 128; seen in xemu), so
+ * the in-play value alone lets a shot through. The addresses are DemulShooter's for its Cxbx-Reloaded targets,
  * rebased to the Xbox (its offsets are from the XBE base, 0x10000; the
  * instruction bytes it checks at them are at the same place in these
  * images), and the outputs carry its names, so the MameHooker ini files
@@ -243,6 +245,7 @@ static struct {
     int32_t  sent[OUT_COUNT];
     int32_t  last_ammo[2];
     int32_t  last_life[2];
+    bool     in_play[2];        /* the status byte says so, this tick */
     uint8_t  gpo;
     bool     gpo_seen;
     Pulse    pulse[PULSE_COUNT];
@@ -776,6 +779,7 @@ static void session_start(const OutputGame *g)
     memset(st.sent, 0, sizeof(st.sent));
     memset(st.last_ammo, 0, sizeof(st.last_ammo));
     memset(st.last_life, 0, sizeof(st.last_life));
+    memset(st.in_play, 0, sizeof(st.in_play));
     st.gpo = 0;
     st.gpo_seen = false;
     st.rev = NULL;
@@ -869,7 +873,8 @@ static void poll_player(int p)
     uint8_t status = 0;
     int32_t life = 0, ammo = 0, clip = 0;
 
-    if (rd8(r->status[p], &status) && status == g->ingame) {
+    st.in_play[p] = rd8(r->status[p], &status) && status == g->ingame;
+    if (st.in_play[p]) {
         if (g->kind == MEM_GS) {
             uint32_t v;
             static const uint32_t life_offs[] = { 0xB8 };
@@ -938,6 +943,7 @@ static void poll_memory(void)
     uint8_t credits;
 
     if (!st.rev && !find_revision()) {
+        st.in_play[0] = st.in_play[1] = false;
         return;
     }
     poll_player(0);
@@ -988,12 +994,15 @@ void chihiro_outputs_jvs_gpo(uint8_t bank0)
             st.value[o] = (bank0 & g->gpo_bit[o]) ? 1 : 0;
         }
     }
+    /* The pulse from the cabinet's own recoil output, for the player in
+     * play: the attract demo keeps its hands off the solenoid. The raw
+     * output (P1_GunRecoil) stays as the game drives it. */
     if (g->recoil_from_jvs) {
         for (int p = 0; p < 2; p++) {
             uint8_t bit = g->gpo_bit[OUT_P1_GUN_RECOIL + p];
             bool now = bit && (bank0 & bit);
             bool was = bit && st.gpo_seen && (st.gpo & bit);
-            if (now && !was) {
+            if (now && !was && st.in_play[p]) {
                 pulse_fire(&st.pulse[PULSE_P1_RECOIL + p],
                            g_config.chihiro.outputs.recoil_on_ms,
                            g_config.chihiro.outputs.recoil_off_ms);

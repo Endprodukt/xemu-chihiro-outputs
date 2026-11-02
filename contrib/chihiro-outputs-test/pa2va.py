@@ -22,19 +22,28 @@ def u32(off):
     return struct.unpack_from("<I", mem, off)[0]
 
 
-# find the page directory: try 0xF000 first, then scan for a PD whose entry
-# 0x200 (VA 0x80000000) is a present 4 MB page of PA 0
-def looks_like_pd(off):
-    e = u32(off + 0x200 * 4)
-    return (e & 1) and (e & 0x80) and (e & 0xFFC00000) == 0
+def walk(pd, va):
+    pde = u32(pd + ((va >> 22) << 2))
+    if not pde & 1:
+        return None
+    if pde & 0x80:
+        return (pde & 0xFFC00000) | (va & 0x3FFFFF)
+    pt = pde & 0xFFFFF000
+    if pt + 0x1000 > len(mem):
+        return None
+    pte = u32(pt + (((va >> 12) & 0x3FF) << 2))
+    if not pte & 1:
+        return None
+    return (pte & 0xFFFFF000) | (va & 0xFFF)
 
 
-cands = [0xF000] if looks_like_pd(0xF000) else []
-if not cands:
-    for off in range(0, 0x1000000, 0x1000):
-        if looks_like_pd(off):
-            cands.append(off)
-print("page directory candidates:", [hex(c) for c in cands[:5]])
+cands = []
+for off in [0xF000] + list(range(0, 0x2000000, 0x1000)):
+    pa = walk(off, 0x10000)
+    if pa is not None and pa + 4 <= len(mem) and mem[pa:pa + 4] == b"XBEH":
+        cands.append(off)
+        break
+print("page directory:", [hex(c) for c in cands])
 pd = cands[0]
 pa2va = {}
 for i in range(1024):
