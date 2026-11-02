@@ -100,13 +100,13 @@ static const char *const output_names[OUT_COUNT] = {
     [OUT_CREDITS]       = "Credits",
 };
 
-#define OUT(idx) (1u << (idx))
-#define OUT_PLAYER_PAIR(idx) (OUT(idx) | OUT((idx) + 1))
+#define OBIT(idx) (1u << (idx))
+#define OBIT_PAIR(idx) (OBIT(idx) | OBIT((idx) + 1))
 /* What every gun game reads from its memory. */
-#define OUT_MEMORY (OUT_PLAYER_PAIR(OUT_P1_AMMO) | OUT_PLAYER_PAIR(OUT_P1_CLIP) | \
-                    OUT_PLAYER_PAIR(OUT_P1_CTM_RECOIL) |                       \
-                    OUT_PLAYER_PAIR(OUT_P1_LIFE) |                             \
-                    OUT_PLAYER_PAIR(OUT_P1_DAMAGED) | OUT(OUT_CREDITS))
+#define OBIT_MEMORY (OBIT_PAIR(OUT_P1_AMMO) | OBIT_PAIR(OUT_P1_CLIP) | \
+                    OBIT_PAIR(OUT_P1_CTM_RECOIL) |                       \
+                    OBIT_PAIR(OUT_P1_LIFE) |                             \
+                    OBIT_PAIR(OUT_P1_DAMAGED) | OBIT(OUT_CREDITS))
 
 typedef enum {
     MEM_BYTES,      /* status, life, ammo: one byte each at a fixed address */
@@ -116,7 +116,7 @@ typedef enum {
 typedef struct {
     const char *xbe;            /* chihiro_game_filename, without its directory */
     const char *rom;            /* the ROM name: the listener's ini file */
-    uint32_t    published;      /* OUT() mask */
+    uint32_t    published;      /* OBIT() mask */
     /* JVS general purpose output, bank 0: the bit of each lamp or solenoid,
      * 0 where the cabinet has none. */
     uint8_t     gpo_bit[OUT_LAST_JVS + 1];
@@ -135,8 +135,8 @@ typedef struct {
  * 8 continue screen, 16 game over, 128 attract demo. */
 static const OutputGame game_vcop3 = {
     .xbe = "vc3.xbe", .rom = "vcop3",
-    .published = OUT_PLAYER_PAIR(OUT_P1_LMP_START) |
-                 OUT_PLAYER_PAIR(OUT_P1_LMP_FOOT) | OUT_MEMORY,
+    .published = OBIT_PAIR(OUT_P1_LMP_START) |
+                 OBIT_PAIR(OUT_P1_LMP_FOOT) | OBIT_MEMORY,
     .gpo_bit = { [OUT_P1_LMP_START] = 0x80, [OUT_P2_LMP_START] = 0x10,
                  [OUT_P1_LMP_FOOT]  = 0x40, [OUT_P2_LMP_FOOT]  = 0x08 },
     .kind = MEM_BYTES, .ingame = 2,
@@ -150,7 +150,7 @@ static const OutputGame game_vcop3 = {
  * 4 continue screen, 66 game over, 9 attract demo. */
 static const OutputGame game_hod3 = {
     .xbe = "hod3xb.xbe", .rom = "hod3",
-    .published = OUT_PLAYER_PAIR(OUT_P1_LMP_START) | OUT_MEMORY,
+    .published = OBIT_PAIR(OUT_P1_LMP_START) | OBIT_MEMORY,
     .gpo_bit = { [OUT_P1_LMP_START] = 0x80, [OUT_P2_LMP_START] = 0x10 },
     .kind = MEM_BYTES, .ingame = 5,
     .status  = { 0x00276708, 0x00276934 },
@@ -165,10 +165,10 @@ static const OutputGame game_hod3 = {
  * DemulShooter's reading of the same byte. */
 static const OutputGame game_gsquad = {
     .xbe = "vsg.xbe", .rom = "gsquad",
-    .published = OUT_PLAYER_PAIR(OUT_P1_LMP_START) | OUT(OUT_LMP_BILLBOARD) |
-                 OUT_PLAYER_PAIR(OUT_P1_LMP_HOLDER) |
-                 OUT_PLAYER_PAIR(OUT_P1_GUN_RECOIL) |
-                 OUT_PLAYER_PAIR(OUT_P1_CARD_LOCK) | OUT_MEMORY,
+    .published = OBIT_PAIR(OUT_P1_LMP_START) | OBIT(OUT_LMP_BILLBOARD) |
+                 OBIT_PAIR(OUT_P1_LMP_HOLDER) |
+                 OBIT_PAIR(OUT_P1_GUN_RECOIL) |
+                 OBIT_PAIR(OUT_P1_CARD_LOCK) | OBIT_MEMORY,
     .gpo_bit = { [OUT_P1_LMP_START]  = 0x80, [OUT_P2_LMP_START]  = 0x04,
                  [OUT_LMP_BILLBOARD] = 0x10,
                  [OUT_P1_LMP_HOLDER] = 0x08, [OUT_P2_LMP_HOLDER] = 0x20,
@@ -269,7 +269,7 @@ static void wm_register(HWND hwnd, LPARAM id)
     wm.clients[i].hwnd = hwnd;
     wm.clients[i].id = id;
     for (int o = 0; o < OUT_COUNT; o++) {
-        if (wm.published & OUT(o)) {
+        if (wm.published & OBIT(o)) {
             PostMessageA(hwnd, wm.om_update, (WPARAM)(o + 1),
                          (LPARAM)wm.last[o]);
         }
@@ -301,7 +301,7 @@ static void wm_send_id_string(HWND hwnd, LPARAM id)
     if (id == 0) {
         g_strlcpy(name, wm.rom, sizeof(name));
     } else if (id >= 1 && id <= OUT_COUNT &&
-               (wm.published & OUT(id - 1))) {
+               (wm.published & OBIT(id - 1))) {
         g_strlcpy(name, output_names[id - 1], sizeof(name));
     }
     qemu_mutex_unlock(&wm.lock);
@@ -576,7 +576,7 @@ static void net_greet(int fd)
     snprintf(line, sizeof(line), "mame_start = %s\r", st.game->rom);
     net_write(fd, line);
     for (int o = 0; o < OUT_COUNT; o++) {
-        if (st.game->published & OUT(o)) {
+        if (st.game->published & OBIT(o)) {
             net_send_value_to(fd, o, st.value[o]);
         }
     }
@@ -665,7 +665,7 @@ static void publish(void)
         return;
     }
     for (int o = 0; o < OUT_COUNT; o++) {
-        if (!(st.game->published & OUT(o)) || st.value[o] == st.sent[o]) {
+        if (!(st.game->published & OBIT(o)) || st.value[o] == st.sent[o]) {
             continue;
         }
         st.sent[o] = st.value[o];
@@ -753,7 +753,7 @@ static void session_start(const OutputGame *g)
     }
     /* Every output once, so a listener that is already there knows them. */
     for (int o = 0; o < OUT_COUNT; o++) {
-        if (g->published & OUT(o)) {
+        if (g->published & OBIT(o)) {
             wm_send(o, st.value[o]);
             net_send_value(o, st.value[o]);
         }
