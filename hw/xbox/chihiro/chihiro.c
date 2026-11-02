@@ -51,6 +51,7 @@
 #include "chihiro-cardreader-crp1231.h"
 #include "chihiro-driveboard-v257.h"
 #include "chihiro-netboard.h"
+#include "chihiro-outputs.h"
 #include "ui/xemu-notifications.h"
 
 /*
@@ -611,6 +612,7 @@ static bool ohci_bus_running;
  * watch is armed again and the mbcom and DMA state starts over. */
 static void chihiro_quickreboot_reset(ChihiroLPCState *s)
 {
+    chihiro_outputs_stop();
     chihiro_game_running = false;
     chihiro_mbcom_bootstrap_done = false;
     chihiro_mbcom_slots.known = false;
@@ -1467,6 +1469,7 @@ static void chihiro_diag_timer_cb(void *opaque)
         if (chihiro_hw210_enabled)
             chihiro_card_reader_tick();
         chihiro_backup_tick();
+        chihiro_outputs_tick();
         timer_mod(s->diag_timer, qemu_clock_get_ms(QEMU_CLOCK_VIRTUAL) + 16);
         return;
     }
@@ -2434,6 +2437,11 @@ static bool chihiro_guest_rw(uint32_t va, void *buf, uint32_t len, bool write)
     return true;
 }
 
+bool chihiro_guest_read(uint32_t va, void *buf, uint32_t len)
+{
+    return chihiro_guest_rw(va, buf, len, false);
+}
+
 /* HACK: a game's own bug corrected in its memory at the first USB bus start,
  * only where the whole signature matches (the image, whose digests the kernel
  * checks, is never touched).
@@ -3302,6 +3310,7 @@ static void chihiro_exit_notify(Notifier *notifier, void *data)
 {
     (void)notifier;
     (void)data;
+    chihiro_outputs_exit();
     chihiro_netboard_exit();
     if (!chihiro_active) return;
     if (!chihiro_save_path[0] && !chihiro_resolve_save_path()) return;

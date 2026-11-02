@@ -121,6 +121,9 @@ extern bool chihiro_game_running;
 void chihiro_on_ohci_bus_start(void);
 void chihiro_on_ohci_bus_stop(void);
 uint32_t chihiro_va_to_pa(uint32_t va);
+/* Guest memory by virtual address, page by page; false when a page is not
+ * mapped. Big lock held. */
+bool chihiro_guest_read(uint32_t va, void *buf, uint32_t len);
 
 /* Called from SMC when SCRATCH=0x04 (QuickReboot signal) */
 void chihiro_on_quickreboot_signal(void);

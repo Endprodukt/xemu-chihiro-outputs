@@ -10,6 +10,7 @@ specific_ss.add(files(
 	'chihiro-jvs.c',
 	'chihiro-mips.c',
 	'chihiro-netboard.c',
+	'chihiro-outputs.c',
 	'chihiro-pic.c',
 	'chihiro-spd.c',
 	'chihiro-usb.c',

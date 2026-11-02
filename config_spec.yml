@@ -862,6 +862,36 @@ chihiro:
     card2_path:
       type: string
       default: ""
+  # The gun cabinets' outputs: start lamps, gun recoil, Ghost Squad's card
+  # locks from the JVS output byte; in play or not, ammunition, life and
+  # credits from the game's memory (Virtua Cop 3, The House of the Dead III,
+  # Ghost Squad). Published as MAME publishes its outputs, under DemulShooter's
+  # names: on Windows through the MAMEOutput window messages MameHooker listens
+  # to, and as text on a TCP port when network is on. See
+  # hw/xbox/chihiro/chihiro-outputs.c.
+  outputs:
+    enable:
+      type: bool
+      default: true
+    # "name = value" lines on 127.0.0.1:network_port, DemulShooter's way
+    network:
+      type: bool
+      default: false
+    network_port:
+      type: integer
+      default: 8000
+    # The recoil pulse (P1_CtmRecoil, P2_CtmRecoil): on for recoil_on_ms, then
+    # at rest for recoil_off_ms before the next shot can kick again
+    recoil_on_ms:
+      type: integer
+      default: 10
+    recoil_off_ms:
+      type: integer
+      default: 30
+    # The P1_Damaged / P2_Damaged pulse, when life drops
+    damaged_ms:
+      type: integer
+      default: 200
   roms:
     bios_path:
       type: string

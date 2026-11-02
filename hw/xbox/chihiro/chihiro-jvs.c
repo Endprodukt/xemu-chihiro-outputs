@@ -24,6 +24,7 @@
 #include "qemu/osdep.h"
 #include "qemu/timer.h"
 #include "chihiro-jvs.h"
+#include "chihiro-outputs.h"
 #include "chihiro-driveboard-v257.h"
 #include "chihiro.h"
 #include "chihiro-cabinet.h"
@@ -251,6 +252,11 @@ static int jvs_handle_command(ChihiroJVSState *s,
             chihiro_cabinet_drive_board() == CHIHIRO_DRIVE_V257) {
             v257_set_motor(chihiro_v257_global,
                                     (cmd[2] & 0x80) != 0);
+        }
+        /* The lamps and solenoids of the gun cabinets, for whoever listens
+         * (MameHooker and the like). */
+        if (banks >= 1 && cmd_len >= 3) {
+            chihiro_outputs_jvs_gpo(cmd[2]);
         }
         /* The card drawers' solenoids, one output per slot, which the
          * cabinet table names. The game holds a card it finds in a slot

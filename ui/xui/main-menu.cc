@@ -50,6 +50,7 @@
 extern "C" {
 extern bool chihiro_freeplay_setting;
 bool chihiro_gundam_card_repair(const char *card_path, char *why, size_t why_len);
+#include "hw/xbox/chihiro/chihiro-outputs.h"
 }
 
 #define DEFAULT_XMU_SIZE 8388608
@@ -1504,6 +1505,35 @@ void MainMenuChihiroView::Draw()
                      "Auto\0Type-1 (FPGA)\0Type-3 (ASIC)\0",
                      "Type-1: Crazy Taxi HR, HOTD3. Type-3: the rest. Needs a "
                      "restart");
+    }
+
+    if (ImGui::CollapsingHeader("Outputs")) {
+        Toggle("Cabinet Outputs", &g_config.chihiro.outputs.enable,
+               "Start lamps, gun recoil, ammo, life and credits of Virtua Cop "
+               "3, The House of the Dead III and Ghost Squad, published like "
+               "MAME's outputs (MameHooker on Windows; ROM names vcop3, hod3, "
+               "gsquad)");
+        ImGui::BeginDisabled(!g_config.chihiro.outputs.enable);
+        Toggle("TCP Output Server", &g_config.chihiro.outputs.network,
+               "Also serve the outputs as text lines on 127.0.0.1, the way "
+               "DemulShooter does (Hook of the Reaper and the like)");
+        ImGui::BeginDisabled(!g_config.chihiro.outputs.network);
+        ImGui::SliderInt("TCP Port", &g_config.chihiro.outputs.network_port,
+                         1024, 65535, "%d");
+        ImGui::EndDisabled();
+        ImGui::SliderInt("Recoil Pulse (ms)",
+                         &g_config.chihiro.outputs.recoil_on_ms, 1, 200, "%d");
+        ImGui::SliderInt("Recoil Rest (ms)",
+                         &g_config.chihiro.outputs.recoil_off_ms, 0, 500,
+                         "%d");
+        ImGui::EndDisabled();
+        const char *rom = chihiro_outputs_rom();
+        if (rom) {
+            ImGui::Text("Publishing '%s' to %d listener(s)", rom,
+                        chihiro_outputs_listeners());
+        } else {
+            ImGui::TextDisabled("No gun game running");
+        }
     }
 
     if (ImGui::CollapsingHeader("Cabinet Link")) {

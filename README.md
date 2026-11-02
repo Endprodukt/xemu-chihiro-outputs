@@ -49,6 +49,15 @@ Both types are emulated with their own full protocol from boot to launch. The ar
 - Cards are read, written and kept: a card carries its player's progress from one session to the next.
 - For Ghost Squad players, grab [Dogehiro](https://github.com/Tovarichtch/dogehiro) to view and edit your cards.
 
+## Cabinet outputs (this fork)
+
+The gun games' outputs go to MameHooker and its kin, the way MAME's do:
+
+- **Ghost Squad**: the cabinet's own JVS outputs, start lamps, billboard, the gun recoil of each player, the card locks.
+- **Virtua Cop 3** and **The House of the Dead III**: start lamps (and VC3's foot-pedal lamps) from JVS; the recoil is read from the game itself, since these cabinets had none: a shot is the magazine counter dropping by one, in play only (not in the attract demo) and never with an empty magazine. Ammo, clip, life, a damaged pulse and credits come from the same memory.
+
+The outputs carry DemulShooter's names (`P1_LmpStart`, `P1_CtmRecoil`, `P1_Ammo`, `P1_Clip`, `P1_Life`, `P1_Damaged`, `Credits`, ...) under the ROM names `vcop3`, `hod3` and `gsquad`, so MameHooker ini files written for DemulShooter's Chihiro targets apply unchanged. On Windows the outputs are the MAME output window messages (start MameHooker first, as with MAME). Settings > Chihiro > Outputs can also serve them as text lines on a TCP port (`name = value`, DemulShooter's protocol, 8000 by default) for Hook of the Reaper and other listeners. The recoil pulse length and rest time are there too; the addresses are in `hw/xbox/chihiro/chihiro-outputs.c`.
+
 ## Snapshots
 
 Native VM snapshots, kept in a qcow2 beside the settings. Snapshots are saved per game, quicksaving and quickloading on the fly.
