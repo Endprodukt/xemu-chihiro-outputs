@@ -873,7 +873,7 @@ chihiro:
     enable:
       type: bool
       default: true
-    # "name = value" lines on 127.0.0.1:network_port, DemulShooter's way
+    # "name = value<CR>" lines on 127.0.0.1:network_port, DemulShooter's way
     network:
       type: bool
       default: false
