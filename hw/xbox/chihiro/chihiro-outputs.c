@@ -147,16 +147,17 @@ typedef struct {
  * holds the life at +0xC and the score at +0x18; player 2's is 0xAC behind,
  * their magazine 0xD8 behind.
  * Two builds: the GD-ROM MAME calls vcop3 (XBE of 2003-05-21, 0x5B5080
- * bytes), measured here (the magazine 9, 8, 7, 0, the status 0, 2, 8 in
- * attract, play, continue); and the one DemulShooter's Cxbx target knows
- * (0x51BA00 bytes), its addresses. The credits of the first are the
- * second's moved by the same 0x76B00 as the status, not yet seen counting. */
+ * bytes), measured here for both players (the magazine 9, 8, 7, 0, the
+ * status 0, 2, 8 in attract, play, continue; player 2's record 0xB0 behind
+ * player 1's in this build, its magazine 0xD8 behind); and the one
+ * DemulShooter's Cxbx target knows (0x51BA00 bytes), its addresses. The
+ * first build's credit counter is not found yet (0: not published). */
 static const OutputRevision vcop3_revs[] = {
     { "2003-05 GD-ROM", 0x0007A3D6, { 0xF0, 0x68, 0x30, 0x9F }, 4,
-      .status  = { 0x003F3F68, 0x003F3F68 + 0xAC },
-      .life    = { 0x003F3F74, 0x003F3F74 + 0xAC },
+      .status  = { 0x003F3F68, 0x003F3F68 + 0xB0 },
+      .life    = { 0x003F3F74, 0x003F3F74 + 0xB0 },
       .ammo    = { 0x003DE432, 0x003DE432 + 0xD8 },
-      .credits = 0x0055FB18 },
+      .credits = 0 },
     { "Cxbx dump", 0x0007A3D6, { 0x8B, 0xE8 }, 2,
       .status  = { 0x0037D468, 0x0037D468 + 0xAC },
       .life    = { 0x0037D474, 0x0037D474 + 0xAC },
@@ -941,7 +942,8 @@ static void poll_memory(void)
     }
     poll_player(0);
     poll_player(1);
-    st.value[OUT_CREDITS] = rd8(st.rev->credits, &credits) ? credits : 0;
+    st.value[OUT_CREDITS] = st.rev->credits &&
+                            rd8(st.rev->credits, &credits) ? credits : 0;
 }
 
 /* ------------------------------------------------------------------------
