@@ -1508,15 +1508,17 @@ void MainMenuChihiroView::Draw()
     }
 
     if (ImGui::CollapsingHeader("Outputs")) {
+        ImGui::TextWrapped(
+            "Lamps, gun recoil, ammo, life and credits of Virtua Cop 3, The "
+            "House of the Dead III and Ghost Squad, published like MAME's "
+            "outputs: MameHooker reads them on Windows (ROM names vcop3, "
+            "hod3, gsquad), the TCP server speaks DemulShooter's text lines "
+            "for Hook of the Reaper and the like.");
         Toggle("Cabinet Outputs", &g_config.chihiro.outputs.enable,
-               "Start lamps, gun recoil, ammo, life and credits of Virtua Cop "
-               "3, The House of the Dead III and Ghost Squad, published like "
-               "MAME's outputs (MameHooker on Windows; ROM names vcop3, hod3, "
-               "gsquad)");
+               "Publish the gun games' outputs");
         ImGui::BeginDisabled(!g_config.chihiro.outputs.enable);
         Toggle("TCP Output Server", &g_config.chihiro.outputs.network,
-               "Also serve the outputs as text lines on 127.0.0.1, the way "
-               "DemulShooter does (Hook of the Reaper and the like)");
+               "Also as text lines on 127.0.0.1");
         ImGui::BeginDisabled(!g_config.chihiro.outputs.network);
         ImGui::SliderInt("TCP Port", &g_config.chihiro.outputs.network_port,
                          1024, 65535, "%d");
