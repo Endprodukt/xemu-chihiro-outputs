@@ -1,8 +1,12 @@
 name: CI
 
 on:
-  # Builds start only by hand: Actions tab, CI, Run workflow.
+  # By hand: Actions tab, CI, Run workflow; and every push to the outputs
+  # branch of this fork (Endprodukt/xemu-chihiro-outputs).
   workflow_dispatch:
+  push:
+    branches:
+      - outputs
   # pull_request:
   # push:
   #   branches-ignore:
