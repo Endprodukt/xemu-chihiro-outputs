@@ -1523,11 +1523,6 @@ void MainMenuChihiroView::Draw()
         ImGui::SliderInt("TCP Port", &g_config.chihiro.outputs.network_port,
                          1024, 65535, "%d");
         ImGui::EndDisabled();
-        ImGui::SliderInt("Recoil Pulse (ms)",
-                         &g_config.chihiro.outputs.recoil_on_ms, 1, 200, "%d");
-        ImGui::SliderInt("Recoil Rest (ms)",
-                         &g_config.chihiro.outputs.recoil_off_ms, 0, 500,
-                         "%d");
         ImGui::EndDisabled();
         const char *rom = chihiro_outputs_rom();
         if (rom) {

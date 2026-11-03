@@ -234,6 +234,18 @@ typedef struct {
     int64_t    free_at;         /* QEMU_CLOCK_REALTIME ms */
 } Pulse;
 
+/* The pulse times are the module's, not the user's: the outputs go to
+ * MameHooker and its kin, which drive the guns. The recoil is held for two
+ * frames, the length of Ghost Squad's own JVS recoil output as the game
+ * drives it (measured 20-44 ms in xemu; PCSX2x6 holds its memory-derived
+ * recoil for one 15 ms poll, DemulShooter's default is 10 ms on, 30 ms
+ * off), and rests as long, which still clears the fastest of the three
+ * games' triggers. The damaged pulse is DemulShooter's 200 ms. */
+#define RECOIL_ON_MS   32
+#define RECOIL_OFF_MS  32
+#define DAMAGED_ON_MS  200
+#define DAMAGED_OFF_MS 100
+
 enum { PULSE_P1_RECOIL, PULSE_P2_RECOIL, PULSE_P1_DAMAGED, PULSE_P2_DAMAGED,
        PULSE_COUNT };
 
@@ -889,14 +901,13 @@ static void poll_player(int p)
         /* A shot: one round fewer. A reload adds, an empty magazine stays,
          * neither is a kick. */
         if (!g->recoil_from_jvs && ammo < st.last_ammo[p]) {
-            pulse_fire(&st.pulse[PULSE_P1_RECOIL + p],
-                       g_config.chihiro.outputs.recoil_on_ms,
-                       g_config.chihiro.outputs.recoil_off_ms);
+            pulse_fire(&st.pulse[PULSE_P1_RECOIL + p], RECOIL_ON_MS,
+                       RECOIL_OFF_MS);
         }
         clip = ammo > 0;
         if (life < st.last_life[p]) {
-            pulse_fire(&st.pulse[PULSE_P1_DAMAGED + p],
-                       g_config.chihiro.outputs.damaged_ms, 100);
+            pulse_fire(&st.pulse[PULSE_P1_DAMAGED + p], DAMAGED_ON_MS,
+                       DAMAGED_OFF_MS);
         }
     }
     st.last_ammo[p] = ammo;
@@ -1003,9 +1014,8 @@ void chihiro_outputs_jvs_gpo(uint8_t bank0)
             bool now = bit && (bank0 & bit);
             bool was = bit && st.gpo_seen && (st.gpo & bit);
             if (now && !was && st.in_play[p]) {
-                pulse_fire(&st.pulse[PULSE_P1_RECOIL + p],
-                           g_config.chihiro.outputs.recoil_on_ms,
-                           g_config.chihiro.outputs.recoil_off_ms);
+                pulse_fire(&st.pulse[PULSE_P1_RECOIL + p], RECOIL_ON_MS,
+                           RECOIL_OFF_MS);
             }
         }
     }

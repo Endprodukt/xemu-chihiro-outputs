@@ -880,18 +880,6 @@ chihiro:
     network_port:
       type: integer
       default: 8000
-    # The recoil pulse (P1_CtmRecoil, P2_CtmRecoil): on for recoil_on_ms, then
-    # at rest for recoil_off_ms before the next shot can kick again
-    recoil_on_ms:
-      type: integer
-      default: 10
-    recoil_off_ms:
-      type: integer
-      default: 30
-    # The P1_Damaged / P2_Damaged pulse, when life drops
-    damaged_ms:
-      type: integer
-      default: 200
   roms:
     bios_path:
       type: string
