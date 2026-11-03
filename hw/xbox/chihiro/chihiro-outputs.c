@@ -235,14 +235,15 @@ typedef struct {
 } Pulse;
 
 /* The pulse times are the module's, not the user's: the outputs go to
- * MameHooker and its kin, which drive the guns. The recoil is held for two
- * frames, the length of Ghost Squad's own JVS recoil output as the game
- * drives it (measured 20-44 ms in xemu; PCSX2x6 holds its memory-derived
- * recoil for one 15 ms poll, DemulShooter's default is 10 ms on, 30 ms
- * off), and rests as long, which still clears the fastest of the three
- * games' triggers. The damaged pulse is DemulShooter's 200 ms. */
-#define RECOIL_ON_MS   32
-#define RECOIL_OFF_MS  32
+ * MameHooker and its kin, which drive the guns. With the usual GUN4IR ini
+ * line (cmw 1 F0x%s%) the solenoid is on for exactly as long as the output
+ * is 1, so the recoil is held 50 ms, a full stroke (DemulShooter's default
+ * 10 ms, PCSX2x6's one 15 ms poll and Ghost Squad's own 2-frame JVS pulse
+ * are too short for that through MameHooker), then rests 30 ms, which
+ * still clears Ghost Squad's full-auto rate. The damaged pulse is
+ * DemulShooter's 200 ms. */
+#define RECOIL_ON_MS   50
+#define RECOIL_OFF_MS  30
 #define DAMAGED_ON_MS  200
 #define DAMAGED_OFF_MS 100
 
